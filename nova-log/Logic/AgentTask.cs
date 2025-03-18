@@ -12,30 +12,16 @@ namespace nova_log.Logic
 {
     public class AgentTask
     {
-        private string _spreadsheetId;
-        private string _spreadsheetName;
 
-        public AgentTask()
+        public async Task<bool> CreateGoogleSheetTask(DataTable taskTable, string spreadsheetId, string spreadsheetName)
         {
-            _spreadsheetId = "15sF4UAoLBju1aXSdo58HTcHMGtRExRu3-CLRzxr2RQY";
-            _spreadsheetName = "Sheet1";
-        }
-
-        public AgentTask(string spreadSheetId, string spreadSheetName)
-        {
-            _spreadsheetId = spreadSheetId;
-            _spreadsheetName = spreadSheetName;
-        }
-
-        public async Task<bool> CreateGoogleSheetTask(DataTable taskTable)
-        {
-            GoogleSheetService sheetService = new(_spreadsheetId, _spreadsheetName);
+            GoogleSheetService sheetService = new(spreadsheetId, spreadsheetName);
             return await sheetService.AppendToSheet(taskTable);
         }
 
-        public async Task<(DataTable dataTable, Exception? error)> GetGoogleSheetTask(string columnFrom, string columnTo)
+        public async Task<(DataTable dataTable, Exception? error)> GetGoogleSheetTask(string columnFrom, string columnTo, string spreadsheetId, string spreadsheetName)
         {
-            GoogleSheetService sheetService = new(_spreadsheetId, _spreadsheetName);
+            GoogleSheetService sheetService = new(spreadsheetId, spreadsheetName);
             return await sheetService.GetTaskListAsDataTableAsync(columnFrom, columnTo);
         }
 
@@ -155,6 +141,7 @@ namespace nova_log.Logic
                     Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
                 }
                 Console.WriteLine(ex.StackTrace);
+                throw new Exception(ex.Message);
             }
         }
 

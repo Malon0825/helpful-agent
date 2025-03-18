@@ -116,7 +116,7 @@ namespace nova_log.Utilities
                                             {
                                                 string jsonArguments = ConvertionUtility.ConvertToJson(argumentsJson);
                                                 chatHistory.Add(new ToolChatMessage(toolCall.Id, jsonArguments));
-                                                chatHistory.Add(new SystemChatMessage(OpenAIPromptModel.GenerateJsonTaskSystemInstruction()));
+                                                chatHistory.Add(new SystemChatMessage(OpenAIPromptModel.GenerateDynamicJsonTaskSystemInstruction()));
 
                                                 string structuredResponse = await new OpenAIService().SendChatPromptReturnString(chatHistory, googleSheetStructuredResponse);
                                                 chatHistory.Add(new AssistantChatMessage(structuredResponse));

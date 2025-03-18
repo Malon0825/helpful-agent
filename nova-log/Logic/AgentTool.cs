@@ -13,7 +13,7 @@ namespace nova_log.Logic
 {
     public class AgentTool
     {
-        AgentTask agentTask = new();
+        AgentTask agentTask = new("", "");
 
         public static readonly ChatTool GetGoogleSheetTask = ChatTool.CreateFunctionTool(
             functionName: nameof(agentTask.GetGoogleSheetTask),
