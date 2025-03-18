@@ -12,5 +12,7 @@ namespace nova_log.Models
         public ChatRoleEnum Role { get; set; }
 
         public string? Content { get; set; }
+
+        public string? ToolCallId { get; set; }
     }
 }

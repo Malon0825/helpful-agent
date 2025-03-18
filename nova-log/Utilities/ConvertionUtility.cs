@@ -7,6 +7,7 @@ using System.Data;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 
 namespace nova_log.Utilities
@@ -21,39 +22,57 @@ namespace nova_log.Utilities
         /// <returns>A JSON string representation of the chat history.</returns>
         public static string ConvertChatHistoryToJson(List<ChatMessage> chatHistory)
         {
-            List<ChatHistoryModel> chatHistoryModelList = new();
-
-            foreach (ChatMessage chatMessage in chatHistory)
+            try
             {
-                ChatHistoryModel chatHistoryModel = new();
+                List<ChatHistoryModel> chatHistoryModelList = new();
 
-                if (chatMessage is UserChatMessage)
+                foreach (ChatMessage chatMessage in chatHistory)
                 {
-                    chatHistoryModel.Role = Enums.ChatRoleEnum.User;
-                }
-                else if (chatMessage is AssistantChatMessage)
-                {
-                    chatHistoryModel.Role = Enums.ChatRoleEnum.Assistant;
-                }
-                else if (chatMessage is SystemChatMessage)
-                {
-                    chatHistoryModel.Role = Enums.ChatRoleEnum.System;
-                }
-                else
-                {
-                    chatHistoryModel.Role = Enums.ChatRoleEnum.Tool;
+                    ChatHistoryModel chatHistoryModel = new();
+
+                    if (chatMessage is UserChatMessage)
+                    {
+                        chatHistoryModel.Role = Enums.ChatRoleEnum.User;
+                    }
+                    else if (chatMessage is AssistantChatMessage)
+                    {
+                        chatHistoryModel.Role = Enums.ChatRoleEnum.Assistant;
+                    }
+                    else if (chatMessage is SystemChatMessage)
+                    {
+                        chatHistoryModel.Role = Enums.ChatRoleEnum.System;
+                    }
+                    else
+                    {
+                        chatHistoryModel.Role = Enums.ChatRoleEnum.Tool;
+
+                        chatHistoryModel.ToolCallId = ((OpenAI.Chat.ToolChatMessage)chatMessage).ToolCallId.ToString();
+                    }
+
+                    if (chatMessage.Content != null && chatMessage.Content.Count > 0)
+                    {
+                        chatHistoryModel.Content = chatMessage.Content[0].Text;
+                    }
+                    else
+                    {
+                        chatHistoryModel.Content = string.Empty;
+                    }
+
+
+                    chatHistoryModelList.Add(chatHistoryModel);
                 }
 
-                chatHistoryModel.Content = chatMessage.Content[0].Text;
-                chatHistoryModelList.Add(chatHistoryModel);
+                string json = JsonSerializer.Serialize(
+                    chatHistoryModelList,
+                    new JsonSerializerOptions { WriteIndented = true }
+                );
+
+                return json;
             }
-
-            string json = JsonSerializer.Serialize(
-                chatHistoryModelList,
-                new JsonSerializerOptions { WriteIndented = true }
-            );
-
-            return json;
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message);
+            }
         }
 
         /// <summary>
@@ -63,52 +82,66 @@ namespace nova_log.Utilities
         /// <returns>A List of ChatMessage objects reconstructed from the JSON.</returns>
         public static List<ChatMessage> ConvertJsonToChatHistory(string json)
         {
-            if (string.IsNullOrWhiteSpace(json))
+            try
             {
-                return new List<ChatMessage>();
-            }
-
-            // Set up options for JSON deserialization.
-            var options = new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            };
-
-            // Deserialize the JSON string into a list of ChatHistoryModel objects.
-            var modelList = JsonSerializer.Deserialize<List<ChatHistoryModel>>(json, options);
-
-            List<ChatMessage> chatMessages = new();
-
-            if (modelList is null)
-                return chatMessages;
-
-            // Convert each ChatHistoryModel to its respective ChatMessage type.
-            foreach (var model in modelList)
-            {
-                ChatMessage message;
-
-                switch (model.Role)
+                if (string.IsNullOrWhiteSpace(json))
                 {
-                    case Enums.ChatRoleEnum.User:
-                        message = new UserChatMessage(model.Content);
-                        break;
-                    case Enums.ChatRoleEnum.Assistant:
-                        message = new AssistantChatMessage(model.Content);
-                        break;
-                    case Enums.ChatRoleEnum.System:
-                        message = new SystemChatMessage(model.Content);
-                        break;
-                    case Enums.ChatRoleEnum.Tool:
-                        message = new ToolChatMessage(model.Content);
-                        break;
-                    default:
-                        message = new ToolChatMessage(model.Content);
-                        break;
+                    return new List<ChatMessage>();
                 }
 
-                chatMessages.Add(message);
+                // Set up options for JSON deserialization.
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+
+                // Deserialize the JSON string into a list of ChatHistoryModel objects.
+                var modelList = JsonSerializer.Deserialize<List<ChatHistoryModel>>(json, options);
+
+                List<ChatMessage> chatMessages = new();
+
+                if (modelList is null)
+                    return chatMessages;
+
+                // Convert each ChatHistoryModel to its respective ChatMessage type.
+                foreach (var model in modelList)
+                {
+                    ChatMessage message;
+
+                    // Validate the Content property before using it.
+                    if (string.IsNullOrWhiteSpace(model.Content))
+                    {
+                        model.Content = string.Empty; 
+                    }
+
+                    switch (model.Role)
+                    {
+                        case Enums.ChatRoleEnum.User:
+                            message = new UserChatMessage(model.Content);
+                            break;
+                        case Enums.ChatRoleEnum.Assistant:
+                            message = new AssistantChatMessage(model.Content);
+                            break;
+                        case Enums.ChatRoleEnum.System:
+                            message = new SystemChatMessage(model.Content);
+                            break;
+                        case Enums.ChatRoleEnum.Tool:
+                            message = new ToolChatMessage(model.ToolCallId, model.Content);
+                            break;
+                        default:
+                            message = new SystemChatMessage("Not implemented Chat Message Role");
+                            break;
+                    }
+
+                    chatMessages.Add(message);
+                }
+                return chatMessages;
             }
-            return chatMessages;
+            catch(Exception ex)
+            {
+                throw new Exception (ex.Message);
+            }
+           
         }
 
         /// <summary>
@@ -119,131 +152,101 @@ namespace nova_log.Utilities
         /// <returns>A DataTable populated with the JSON data.</returns>
         public static DataTable ConvertJsonToDynamicDataTable(string json)
         {
-            // Create a new DataTable instance.
-            DataTable dt = new DataTable();
-
-            // Parse the JSON string into a JArray.
-            JArray jsonArray = JArray.Parse(json);
-
-            // Iterate over each JObject in the array.
-            foreach (JObject obj in jsonArray)
-            {
-                // For each property in the JObject, add a DataColumn if it doesn't already exist.
-                foreach (var property in obj.Properties())
-                {
-                    if (!dt.Columns.Contains(property.Name))
-                    {
-                        // You can change the data type as needed; here we use string for simplicity.
-                        dt.Columns.Add(property.Name, typeof(string));
-                    }
-                }
-
-                // Once columns are set, create a new DataRow.
-                DataRow row = dt.NewRow();
-
-                // For each property, assign the value to the corresponding column.
-                foreach (var property in obj.Properties())
-                {
-                    // If the property value is null, save DBNull.Value.
-                    row[property.Name] = property.Value != null ? property.Value.ToString() : DBNull.Value;
-                }
-
-                // Add the row to the DataTable.
-                dt.Rows.Add(row);
-            }
-
-            return dt;
-        }
-
-
-        public static DataTable ConvertJsonToDataTable(string jsonResponse)
-        {
-            DataTable dataTable = new DataTable();
-
-            // Define the columns based on JSON structure
-            dataTable.Columns.Add("Task List", typeof(string));
-            dataTable.Columns.Add("Task Type", typeof(string));
-            dataTable.Columns.Add("Estimate (hours)", typeof(string));
-            dataTable.Columns.Add("Actual Start Date", typeof(string));
-            dataTable.Columns.Add("Actual End Date", typeof(string));
-            dataTable.Columns.Add("Priority Level", typeof(string));
-            dataTable.Columns.Add("Status", typeof(string));
-            dataTable.Columns.Add("Remarks", typeof(string));
-
             try
             {
-                // Deserialize JSON response
-                var document = JsonDocument.Parse(jsonResponse);
-                var tasksArray = document.RootElement.GetProperty("tasks");
+                DataTable dt = new DataTable();
+                JArray jsonArray = JArray.Parse(json);
 
-                foreach (var task in tasksArray.EnumerateArray())
+                foreach (JObject obj in jsonArray)
                 {
-                    DataRow row = dataTable.NewRow();
-                    row["Task List"] = task.GetProperty("task_list").GetString();
-                    row["Task Type"] = task.GetProperty("task_type").GetString();
-                    row["Estimate (Hours)"] = task.GetProperty("estimate_hours").GetString();
-                    row["Actual Start Date"] = task.GetProperty("actual_start_date").GetString();
-                    row["Actual End Date"] = task.GetProperty("actual_end_date").GetString();
-                    row["Priority Level"] = task.GetProperty("priority_level").GetString();
-                    row["Status"] = task.GetProperty("status").GetString();
-                    row["Remarks"] = task.GetProperty("remarks").GetString();
+                    foreach (var property in obj.Properties())
+                    {
+                        if (!dt.Columns.Contains(property.Name))
+                        {
+                            dt.Columns.Add(property.Name, typeof(string));
+                        }
+                    }
 
-                    dataTable.Rows.Add(row);
+                    DataRow row = dt.NewRow();
+                    foreach (var property in obj.Properties())
+                    {
+                        row[property.Name] = property.Value != null ? property.Value.ToString() : DBNull.Value;
+                    }
+                    dt.Rows.Add(row);
                 }
+
+                return dt;
             }
             catch (Exception ex)
             {
-                throw new Exception("Error parsing JSON to DataTable", ex);
-            }
-
-            return dataTable;
+                throw new Exception(ex.Message);
+            } 
         }
 
+
+        /// <summary>
+        /// Converts a DataTable to a JSON string representation.
+        /// </summary>
+        /// <param name="dataTable">The DataTable to convert.</param>
+        /// <returns>A JSON string representation of the DataTable.</returns>
         public static string ConvertToJson(DataTable dataTable)
         {
-            var rows = new List<Dictionary<string, object>>();
-
-            // Iterate over each row in the DataTable.
-            foreach (DataRow row in dataTable.Rows)
+            try
             {
-                var rowDictionary = new Dictionary<string, object>();
+                var rows = new List<Dictionary<string, object>>();
 
-                // Add each column's data into the dictionary.
-                foreach (DataColumn column in dataTable.Columns)
+                foreach (DataRow row in dataTable.Rows)
                 {
-                    rowDictionary[column.ColumnName] = row[column] ?? DBNull.Value; // Handle nulls.
+                    var rowDictionary = new Dictionary<string, object>();
+                    foreach (DataColumn column in dataTable.Columns)
+                    {
+                        rowDictionary[column.ColumnName] = row[column] ?? DBNull.Value;
+                    }
+                    rows.Add(rowDictionary);
                 }
 
-                rows.Add(rowDictionary);
+                var options = new JsonSerializerOptions { WriteIndented = true };
+                var withTrailingQoute = '"' + System.Text.Json.JsonSerializer.Serialize(rows, options) + '"';
+                return withTrailingQoute;
             }
-
-            // Serialize the list of dictionaries to JSON.
-            var options = new JsonSerializerOptions
+            catch (Exception ex)
             {
-                WriteIndented = true, // Makes the JSON pretty (optional).
-            };
-
-            return System.Text.Json.JsonSerializer.Serialize(rows, options);
+                throw new Exception("Error converting DataTable to JSON", ex);
+            }
         }
 
+
+        /// <summary>
+        /// Converts a JsonDocument to a JSON string representation.
+        /// </summary>
+        /// <param name="argumentsJson">The JsonDocument to convert.</param>
+        /// <returns>A JSON string representation of the JsonDocument.</returns>
         public static string ConvertToJson(JsonDocument argumentsJson)
         {
-            var jsonObject = new Dictionary<string, object>();
+            try
+            {
+                var jsonObject = new Dictionary<string, object>();
 
-            if (argumentsJson.RootElement.TryGetProperty("spreadSheetId", out JsonElement spreadSheetId))
-                jsonObject["spreadSheetId"] = spreadSheetId.GetString();
+                if (argumentsJson.RootElement.TryGetProperty("spreadSheetId", out JsonElement spreadSheetId))
+                    jsonObject["spreadSheetId"] = spreadSheetId.GetString();
 
-            if (argumentsJson.RootElement.TryGetProperty("sheetName", out JsonElement sheetName))
-                jsonObject["sheetName"] = sheetName.GetString();
+                if (argumentsJson.RootElement.TryGetProperty("sheetName", out JsonElement sheetName))
+                    jsonObject["sheetName"] = sheetName.GetString();
 
-            if (argumentsJson.RootElement.TryGetProperty("taskDetails", out JsonElement taskDetails))
-                jsonObject["taskDetails"] = taskDetails.GetString();
+                if (argumentsJson.RootElement.TryGetProperty("taskDetails", out JsonElement taskDetails))
+                    jsonObject["taskDetails"] = taskDetails.GetString();
 
-            if (argumentsJson.RootElement.TryGetProperty("taskCount", out JsonElement taskCount))
-                jsonObject["taskCount"] = taskCount.GetInt32();
+                if (argumentsJson.RootElement.TryGetProperty("taskCount", out JsonElement taskCount))
+                    jsonObject["taskCount"] = taskCount.GetInt32();
 
-            return System.Text.Json.JsonSerializer.Serialize(jsonObject, new JsonSerializerOptions { WriteIndented = true });
+                return System.Text.Json.JsonSerializer.Serialize(jsonObject, new JsonSerializerOptions { WriteIndented = true });
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error converting JsonDocument to JSON", ex);
+            }
         }
+
 
 
 

@@ -67,10 +67,12 @@ namespace nova_log.Utilities
                                             {
                                                 try
                                                 {
-                                                    AgentTask agentTask = new(spreadSheetId.GetString(), sheetName.GetString());
+                                                    AgentTask agentTask = new();
                                                     var (dataTable, error) = await agentTask.GetGoogleSheetTask(
                                                         sheetRangeFrom.GetString(),
-                                                        sheetRangeTo.GetString()
+                                                        sheetRangeTo.GetString(),
+                                                        spreadSheetId.GetString(), 
+                                                        sheetName.GetString()
                                                     );
 
                                                     if (error != null)
@@ -123,15 +125,15 @@ namespace nova_log.Utilities
 
                                                 DataTable taskList = ConvertionUtility.ConvertJsonToDynamicDataTable(structuredResponse);
 
-                                                AgentTask agent = new(spreadSheetId.GetString(), sheetName.GetString());
+                                                AgentTask agent = new();
 
-                                                if (await agent.CreateGoogleSheetTask(taskList))
+                                                if (await agent.CreateGoogleSheetTask(taskList, spreadSheetId.GetString(), sheetName.GetString()))
                                                 {
-                                                    chatHistory.Add(new AssistantChatMessage("Task has been inserted to google sheet."));
+                                                    chatHistory.Add(new SystemChatMessage("Task has been inserted to google sheet."));
                                                 }
                                                 else
                                                 {
-                                                    chatHistory.Add(new AssistantChatMessage("Failed to insert task."));
+                                                    chatHistory.Add(new SystemChatMessage("Failed to insert task."));
                                                 }
                                             }
                                             catch (Exception ex)
@@ -208,7 +210,7 @@ namespace nova_log.Utilities
 
                                                 AgentTask agentTask = new();
                                                 string repoJson = await agentTask.GetGithubRepoId(repoOwner);
-                                                chatHistory.Add(new AssistantChatMessage(repoJson));
+                                                chatHistory.Add(new SystemChatMessage(repoJson));
                                                 chatHistory.Add(new SystemChatMessage("Based on the response in json. Create a list of repository and give that back to the user."));
                                                 chatHistory.Add(new AssistantChatMessage(await new OpenAIService().SendChatPrompt(chatHistory)));
                                             }
