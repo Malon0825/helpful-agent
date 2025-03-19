@@ -111,7 +111,10 @@ namespace nova_log.Utilities
 
                                             if (!hasSpreadsheetId || !hasSheetName)
                                             {
-                                                throw new ArgumentException("Missing required arguments: spreadSheetId or sheetName.");
+                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, "{}"));
+                                                chatHistory.Add(new SystemChatMessage($"Missing required arguments: spreadSheetId or sheetName."));
+                                                string agentErrorResponse = await new OpenAIService().SendChatPrompt(chatHistory);
+                                                chatHistory.Add(new AssistantChatMessage(agentErrorResponse));
                                             }
 
                                             try
@@ -127,13 +130,16 @@ namespace nova_log.Utilities
 
                                                 AgentTask agent = new();
 
-                                                if (await agent.CreateGoogleSheetTask(taskList, spreadSheetId.GetString(), sheetName.GetString()))
+                                                bool isTaskInserted = await agent.CreateGoogleSheetTask(taskList, spreadSheetId.GetString(), sheetName.GetString());
+                                                if (isTaskInserted)
                                                 {
                                                     chatHistory.Add(new SystemChatMessage("Task has been inserted to google sheet."));
+                                                    chatHistory.Add(new ToolChatMessage(toolCall.Id, "Successfuly inserted task."));
                                                 }
                                                 else
                                                 {
                                                     chatHistory.Add(new SystemChatMessage("Failed to insert task."));
+                                                    chatHistory.Add(new ToolChatMessage(toolCall.Id, "Failed to insert task."));
                                                 }
                                             }
                                             catch (Exception ex)
