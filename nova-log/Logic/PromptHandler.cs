@@ -26,40 +26,34 @@ namespace nova_log.Logic
             _options.Tools.Add(AgentTool.GetGoogleSheetTask);
             _options.Tools.Add(AgentTool.CreateGoogleSheetTask);
             _options.Tools.Add(AgentTool.GetCurrentDate);
-            _options.Tools.Add(AgentTool.GetGithubProjectFieldId);
-            _options.Tools.Add(AgentTool.GetGithubRepoId);
-            _options.Tools.Add(AgentTool.CreateGithubIssue);
-            _options.Tools.Add(AgentTool.GetGithubAssigneeId);
-            _options.Tools.Add(AgentTool.AddIssueToProject);
-            _options.Tools.Add(AgentTool.UpdateAssignee);
+            //_options.Tools.Add(AgentTool.GetGithubProjectFieldId);
+            //_options.Tools.Add(AgentTool.GetGithubRepoId);
+            //_options.Tools.Add(AgentTool.CreateGithubIssue);
+            //_options.Tools.Add(AgentTool.GetGithubAssigneeId);
+            //_options.Tools.Add(AgentTool.AddIssueToProject);
+            //_options.Tools.Add(AgentTool.UpdateAssignee);
         }
 
-        public async Task<RequestModel> SendChatHistoryWithTools(RequestModel clientRequest)
+        public async Task<List<ChatMessage>> SendChatHistoryWithTools(List<ChatMessage> chatHistory)
         {
             try
             {
                 OpenAIService openAIService = new();
-                NovaCoreUtility promptUtility = new();
+                NovaCoreUtility promptUtility = new();;
 
-                List<ChatMessage> chatHistory = ConvertionUtility.ConvertJsonToChatHistory(clientRequest.ChatHistory);
-
-                chatHistory.Add(new UserChatMessage(clientRequest.UserPrompt));
                 chatHistory = await promptUtility.EvaluateAgentResponseWithLoop(chatHistory, _options);
-                clientRequest.ChatHistory = ConvertionUtility.ConvertChatHistoryToJson(chatHistory);
-                clientRequest.AgentResponse = chatHistory.Last().Content[0].Text;
             }
             catch (Exception ex)
             {
                 throw new Exception(ex.Message);
             }
-            return clientRequest;
+            return chatHistory;
         }
 
-        public async Task<RequestModel> SendChatIntroPrompt()
+        public async Task<List<ChatMessage>> SendChatIntroPrompt()
         {
             List<ChatMessage> chatHistory = new();
             OpenAIService openAIService = new();
-            RequestModel clientRequest = new();
             try
             {
                 chatHistory.Add(new SystemChatMessage(OpenAIPromptModel.IntroductionSystemInstruction()));
@@ -67,9 +61,7 @@ namespace nova_log.Logic
                 string agentResponse = await openAIService.SendIntroPrompt(chatHistory);
                 chatHistory.Add(new AssistantChatMessage(agentResponse));
 
-                clientRequest.ChatHistory = ConvertionUtility.ConvertChatHistoryToJson(chatHistory);
-                clientRequest.AgentResponse = chatHistory.Last().Content[0].Text;
-                return clientRequest;
+                return chatHistory;
             }
             catch (Exception ex)
             {
@@ -77,6 +69,50 @@ namespace nova_log.Logic
             }
 
         }
+
+        //public async Task<RequestModel> SendChatHistoryWithTools(RequestModel clientRequest)
+        //{
+        //    try
+        //    {
+        //        OpenAIService openAIService = new();
+        //        NovaCoreUtility promptUtility = new();
+
+        //        List<ChatMessage> chatHistory = ConvertionUtility.ConvertJsonToChatHistory(clientRequest.ChatHistory);
+
+        //        chatHistory.Add(new UserChatMessage(clientRequest.UserPrompt));
+        //        chatHistory = await promptUtility.EvaluateAgentResponseWithLoop(chatHistory, _options);
+        //        clientRequest.ChatHistory = ConvertionUtility.ConvertChatHistoryToJson(chatHistory);
+        //        clientRequest.AgentResponse = chatHistory.Last().Content[0].Text;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        throw new Exception(ex.Message);
+        //    }
+        //    return clientRequest;
+        //}
+
+        //public async Task<RequestModel> SendChatIntroPrompt()
+        //{
+        //    List<ChatMessage> chatHistory = new();
+        //    OpenAIService openAIService = new();
+        //    RequestModel clientRequest = new();
+        //    try
+        //    {
+        //        chatHistory.Add(new SystemChatMessage(OpenAIPromptModel.IntroductionSystemInstruction()));
+
+        //        string agentResponse = await openAIService.SendIntroPrompt(chatHistory);
+        //        chatHistory.Add(new AssistantChatMessage(agentResponse));
+
+        //        clientRequest.ChatHistory = ConvertionUtility.ConvertChatHistoryToJson(chatHistory);
+        //        clientRequest.AgentResponse = chatHistory.Last().Content[0].Text;
+        //        return clientRequest;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        throw new Exception(ex.Message);
+        //    }
+
+        //}
 
         public async Task<string> SendUserPrompt(List<ChatMessage> chatHitory)
         {

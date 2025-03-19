@@ -23,13 +23,19 @@ namespace nova_log.Utilities
         {
             OpenAIService openAIService = new();
             bool requiresAction;
-
+            RequestModel history = new();
             do
             {
-                requiresAction = false;
-                ChatCompletion agentResponse = await openAIService.SendChatPrompt(chatHistory, options);
 
-                switch (agentResponse.FinishReason)
+                requiresAction = false;
+                try
+                {
+
+                    history.ChatHistory = ConvertionUtility.ConvertChatHistoryToJson(chatHistory);
+                    ChatCompletion agentResponse = await openAIService.SendChatPrompt(chatHistory, options);
+
+
+                    switch (agentResponse.FinishReason)
                 {
                     case ChatFinishReason.Stop:
                         {
@@ -47,17 +53,22 @@ namespace nova_log.Utilities
                                 {
                                     case nameof(AgentTool.GetGoogleSheetTask):
                                         {
+                                            chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool call to get all task in google sheet."));
+                                            chatHistory.Add(new SystemChatMessage($"Getting properties on JsonDocument RootElement"));
                                             using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
-
-                                            // Extract and validate arguments.
                                             bool hasSpreadsheetId = argumentsJson.RootElement.TryGetProperty("spreadSheetId", out JsonElement spreadSheetId);
                                             bool hasSheetName = argumentsJson.RootElement.TryGetProperty("sheetName", out JsonElement sheetName);
                                             bool hasSheetRangeFrom = argumentsJson.RootElement.TryGetProperty("sheetRangeFrom", out JsonElement sheetRangeFrom);
                                             bool hasSheetRangeTo = argumentsJson.RootElement.TryGetProperty("sheetRangeTo", out JsonElement sheetRangeTo);
 
+                                            var gSheetId = spreadSheetId.GetString();
+                                            var gSheetName = sheetName.GetString();
+                                            var gSheetFrom = sheetRangeFrom.GetString();
+                                            var gSheetTo = sheetRangeTo.GetString();
+
+                                            chatHistory.Add(new SystemChatMessage($"Sheet Id: {gSheetId}, Sheet Name: {gSheetName}"));
                                             if (!hasSpreadsheetId || !hasSheetName || !hasSheetRangeFrom || !hasSheetRangeTo)
                                             {
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, "{}"));
                                                 chatHistory.Add(new SystemChatMessage("Missing required arguments: spreadSheetId, sheetName, sheetRangeFrom, or sheetRangeTo."));
                                                 string agentErrorResponse = await new OpenAIService().SendChatPrompt(chatHistory);
                                                 chatHistory.Add(new AssistantChatMessage(agentErrorResponse));
@@ -74,24 +85,22 @@ namespace nova_log.Utilities
                                                         spreadSheetId.GetString(), 
                                                         sheetName.GetString()
                                                     );
-
+                                                    chatHistory.Add(new SystemChatMessage($"Fetched data from google sheet."));
                                                     if (error != null)
                                                     {
-                                                        chatHistory.Add(new ToolChatMessage(toolCall.Id, "{}"));
                                                         chatHistory.Add(new SystemChatMessage($"An error occurred: {error.Message}"));
                                                         string agentErrorResponse = await new OpenAIService().SendChatPrompt(chatHistory);
                                                         chatHistory.Add(new AssistantChatMessage(agentErrorResponse));
                                                     }
                                                     else
                                                     {
+                                                      
                                                         string taskJson = ConvertionUtility.ConvertToJson(dataTable);
-                                                        chatHistory.Add(new ToolChatMessage(toolCall.Id, taskJson));
-                                                        chatHistory.Add(new SystemChatMessage($"Task list has been retrieved from google sheet: {dataTable}"));
+                                                        chatHistory.Add(new SystemChatMessage($"Task list has been retrieved from google sheet: {taskJson}"));
                                                     }
                                                 }
                                                 catch (Exception ex)
                                                 {
-                                                    chatHistory.Add(new ToolChatMessage(toolCall.Id, "{}"));
                                                     chatHistory.Add(new SystemChatMessage($"Give a user friendly message about what might be caussing the error: {ex}"));
                                                     string agentErrorResponse = await new OpenAIService().SendChatPrompt(chatHistory);
                                                     chatHistory.Add(new AssistantChatMessage(agentErrorResponse));
@@ -103,6 +112,7 @@ namespace nova_log.Utilities
 
                                     case nameof(AgentTool.CreateGoogleSheetTask):
                                         {
+                                            chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool create task in google sheet."));
                                             using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
 
                                             bool hasSpreadsheetId = argumentsJson.RootElement.TryGetProperty("spreadSheetId", out JsonElement spreadSheetId);
@@ -111,7 +121,6 @@ namespace nova_log.Utilities
 
                                             if (!hasSpreadsheetId || !hasSheetName)
                                             {
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, "{}"));
                                                 chatHistory.Add(new SystemChatMessage($"Missing required arguments: spreadSheetId or sheetName."));
                                                 string agentErrorResponse = await new OpenAIService().SendChatPrompt(chatHistory);
                                                 chatHistory.Add(new AssistantChatMessage(agentErrorResponse));
@@ -120,11 +129,10 @@ namespace nova_log.Utilities
                                             try
                                             {
                                                 string jsonArguments = ConvertionUtility.ConvertToJson(argumentsJson);
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, jsonArguments));
                                                 chatHistory.Add(new SystemChatMessage(OpenAIPromptModel.GenerateDynamicJsonTaskSystemInstruction()));
 
-                                                string structuredResponse = await new OpenAIService().SendChatPromptReturnString(chatHistory, googleSheetStructuredResponse);
-                                                chatHistory.Add(new AssistantChatMessage(structuredResponse));
+                                                    string structuredResponse = await new OpenAIService().SendChatPromptReturnString(chatHistory, googleSheetStructuredResponse);
+                                                    chatHistory.Add(new AssistantChatMessage(structuredResponse));
 
                                                 DataTable taskList = ConvertionUtility.ConvertJsonToDynamicDataTable(structuredResponse);
 
@@ -134,17 +142,14 @@ namespace nova_log.Utilities
                                                 if (isTaskInserted)
                                                 {
                                                     chatHistory.Add(new SystemChatMessage("Task has been inserted to google sheet."));
-                                                    chatHistory.Add(new ToolChatMessage(toolCall.Id, "Successfuly inserted task."));
                                                 }
                                                 else
                                                 {
                                                     chatHistory.Add(new SystemChatMessage("Failed to insert task."));
-                                                    chatHistory.Add(new ToolChatMessage(toolCall.Id, "Failed to insert task."));
                                                 }
                                             }
                                             catch (Exception ex)
                                             {
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, "{}"));
                                                 chatHistory.Add(new SystemChatMessage($"Give a user friendly message about what might be caussing the error: {ex}"));
                                                 string agentErrorResponse = await new OpenAIService().SendChatPrompt(chatHistory);
                                                 chatHistory.Add(new AssistantChatMessage(agentErrorResponse));
@@ -154,20 +159,18 @@ namespace nova_log.Utilities
 
                                     case nameof(AgentTool.GetCurrentDate):
                                         {
+                                            chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool call to get current date."));
                                             using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
 
                                             try
                                             {
                                                 string jsonArguments = ConvertionUtility.ConvertToJson(argumentsJson);
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, jsonArguments));
                                                 chatHistory.Add(new SystemChatMessage("Processing GetCurrentDateTool."));
-
                                                 string currentDate = AgentTask.GetCurrentDate();
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, currentDate));
+                                                chatHistory.Add(new SystemChatMessage(currentDate));
                                             }
                                             catch (Exception ex)
                                             {
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, "{}"));
                                                 chatHistory.Add(new SystemChatMessage($"Error in GetCurrentDateTool implementation: {ex.Message}"));
                                                 string agentErrorResponse = await new OpenAIService().SendChatPrompt(chatHistory);
                                                 chatHistory.Add(new AssistantChatMessage(agentErrorResponse));
@@ -177,12 +180,12 @@ namespace nova_log.Utilities
 
                                     case nameof(AgentTool.GetGithubProjectFieldId):
                                         {
-                                            using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
+                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool call to get all github projects field id."));
+                                                using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
 
                                             try
                                             {
                                                 string jsonArguments = ConvertionUtility.ConvertToJson(argumentsJson);
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, jsonArguments));
                                                 chatHistory.Add(new SystemChatMessage("Processing CheckGithubProjectFields."));
 
                                                 string repoOwner = argumentsJson.RootElement.GetProperty("repoOwner").GetString();
@@ -191,11 +194,9 @@ namespace nova_log.Utilities
                                                 AgentTask projectHelper = new();
                                                 string projectFieldsJson = await projectHelper.GetGithubProjectFieldId(repoOwner, projectNumber);
 
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, projectFieldsJson));
                                             }
                                             catch (Exception ex)
                                             {
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, "{}"));
                                                 chatHistory.Add(new SystemChatMessage($"Error in CheckGithubProjectFields implementation: {ex.Message}"));
 
                                                 string agentErrorResponse = await new OpenAIService().SendChatPrompt(chatHistory);
@@ -206,12 +207,12 @@ namespace nova_log.Utilities
 
                                     case nameof(AgentTool.GetGithubRepoId):
                                         {
-                                            using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
+                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool call to get all github repo id."));
+                                                using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
 
                                             try
                                             {
                                                 string repoOwner = argumentsJson.RootElement.GetProperty("repoOwner").GetString();
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, $"{{ \"repoOwner\": \"{repoOwner}\" }}"));
                                                 chatHistory.Add(new SystemChatMessage($"Fetching repositories for {repoOwner}..."));
 
                                                 AgentTask agentTask = new();
@@ -222,7 +223,6 @@ namespace nova_log.Utilities
                                             }
                                             catch (Exception ex)
                                             {
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, "{}"));
                                                 chatHistory.Add(new SystemChatMessage($"Error in GetGithubRepoId implementation: {ex.Message}"));
                                                 string agentErrorResponse = await new OpenAIService().SendChatPrompt(chatHistory);
                                                 chatHistory.Add(new AssistantChatMessage(agentErrorResponse));
@@ -230,9 +230,34 @@ namespace nova_log.Utilities
                                             break;
                                         }
 
+                                    case nameof(AgentTool.GetGithubAssigneeId):
+                                            {
+                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool call to get github assignee id."));
+                                                using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
+
+                                                try
+                                                {
+                                                    string userName = argumentsJson.RootElement.GetProperty("userName").GetString();
+
+                                                    chatHistory.Add(new SystemChatMessage($"Fetching GitHub user ID for {userName}..."));
+
+                                                    AgentTask agentTask = new();
+                                                    string userId = await agentTask.GetGithubAssigneeId(userName);
+
+                                                }
+                                                catch (Exception ex)
+                                                {
+                                                    chatHistory.Add(new SystemChatMessage($"Error in GetGithubAssigneeId implementation: {ex.Message}"));
+                                                    string agentErrorResponse = await new OpenAIService().SendChatPrompt(chatHistory);
+                                                    chatHistory.Add(new AssistantChatMessage(agentErrorResponse));
+                                                }
+                                                break;
+                                            }
+
                                     case nameof(AgentTool.CreateGithubIssue):
                                         {
-                                            using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
+                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool call to create github issue."));
+                                                using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
 
                                             try
                                             {
@@ -240,45 +265,14 @@ namespace nova_log.Utilities
                                                 string title = argumentsJson.RootElement.GetProperty("title").GetString();
                                                 string body = argumentsJson.RootElement.GetProperty("body").GetString();
 
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id,
-                                                    $"{{ \"repositoryId\": \"{repositoryId}\", \"title\": \"{title}\", \"body\": \"{body}\" }}"));
                                                 chatHistory.Add(new SystemChatMessage($"Creating a new GitHub issue in repository {repositoryId}..."));
 
                                                 AgentTask agentTask = new();
                                                 string issueResponse = await agentTask.CreateGithubIssue(repositoryId, title, body);
-
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, issueResponse));
                                             }
                                             catch (Exception ex)
                                             {
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, "{}"));
                                                 chatHistory.Add(new SystemChatMessage($"Error in CreateGithubIssue implementation: {ex.Message}"));
-                                                string agentErrorResponse = await new OpenAIService().SendChatPrompt(chatHistory);
-                                                chatHistory.Add(new AssistantChatMessage(agentErrorResponse));
-                                            }
-                                            break;
-                                        }
-
-                                    case nameof(AgentTool.GetGithubAssigneeId):
-                                        {
-                                            using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
-
-                                            try
-                                            {
-                                                string userName = argumentsJson.RootElement.GetProperty("userName").GetString();
-
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, $"{{ \"userName\": \"{userName}\" }}"));
-                                                chatHistory.Add(new SystemChatMessage($"Fetching GitHub user ID for {userName}..."));
-
-                                                AgentTask agentTask = new();
-                                                string userId = await agentTask.GetGithubAssigneeId(userName);
-
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, userId));
-                                            }
-                                            catch (Exception ex)
-                                            {
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, "{}"));
-                                                chatHistory.Add(new SystemChatMessage($"Error in GetGithubAssigneeId implementation: {ex.Message}"));
                                                 string agentErrorResponse = await new OpenAIService().SendChatPrompt(chatHistory);
                                                 chatHistory.Add(new AssistantChatMessage(agentErrorResponse));
                                             }
@@ -287,24 +281,21 @@ namespace nova_log.Utilities
 
                                     case nameof(AgentTool.AddIssueToProject):
                                         {
-                                            using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
+                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool call to add issues to github projects"));
+                                                using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
 
                                             try
                                             {
                                                 string projectId = argumentsJson.RootElement.GetProperty("projectId").GetString();
                                                 string contentId = argumentsJson.RootElement.GetProperty("contentId").GetString();
 
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, $"{{ \"projectId\": \"{projectId}\", \"contentId\": \"{contentId}\" }}"));
                                                 chatHistory.Add(new SystemChatMessage($"Adding issue {contentId} to project {projectId}..."));
 
                                                 AgentTask agentTask = new();
                                                 string result = await agentTask.AddIssueToProject(projectId, contentId);
-
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, result));
                                             }
                                             catch (Exception ex)
                                             {
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, "{}"));
                                                 chatHistory.Add(new SystemChatMessage($"Error in AddIssueToProject implementation: {ex.Message}"));
                                                 string agentErrorResponse = await new OpenAIService().SendChatPrompt(chatHistory);
                                                 chatHistory.Add(new AssistantChatMessage(agentErrorResponse));
@@ -314,24 +305,21 @@ namespace nova_log.Utilities
 
                                     case nameof(AgentTool.UpdateAssignee):
                                         {
-                                            using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
+                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool call to update assignee on github projects."));
+                                                using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
 
                                             try
                                             {
                                                 string contentId = argumentsJson.RootElement.GetProperty("contentId").GetString();
                                                 string assigneeId = argumentsJson.RootElement.GetProperty("assigneeId").GetString();
 
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, $"{{ \"contentId\": \"{contentId}\", \"assigneeId\": \"{assigneeId}\" }}"));
                                                 chatHistory.Add(new SystemChatMessage($"Updating assignee for content {contentId} to user {assigneeId}..."));
 
                                                 AgentTask agentTask = new();
                                                 string result = await agentTask.UpdateAssignee(contentId, assigneeId);
-
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, result));
                                             }
                                             catch (Exception ex)
                                             {
-                                                chatHistory.Add(new ToolChatMessage(toolCall.Id, "{}"));
                                                 chatHistory.Add(new SystemChatMessage($"Error in UpdateAssignee implementation: {ex.Message}"));
                                                 string agentErrorResponse = await new OpenAIService().SendChatPrompt(chatHistory);
                                                 chatHistory.Add(new AssistantChatMessage(agentErrorResponse));
@@ -363,6 +351,11 @@ namespace nova_log.Utilities
 
                     default:
                         throw new NotImplementedException(agentResponse.FinishReason.ToString());
+                }
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception(ex.Message);
                 }
             } while (requiresAction);
             return chatHistory;

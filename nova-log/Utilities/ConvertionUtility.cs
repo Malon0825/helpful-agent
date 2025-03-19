@@ -58,7 +58,6 @@ namespace nova_log.Utilities
                         chatHistoryModel.Content = string.Empty;
                     }
 
-
                     chatHistoryModelList.Add(chatHistoryModel);
                 }
 
@@ -89,13 +88,11 @@ namespace nova_log.Utilities
                     return new List<ChatMessage>();
                 }
 
-                // Set up options for JSON deserialization.
                 var options = new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true
                 };
 
-                // Deserialize the JSON string into a list of ChatHistoryModel objects.
                 var modelList = JsonSerializer.Deserialize<List<ChatHistoryModel>>(json, options);
 
                 List<ChatMessage> chatMessages = new();
@@ -103,12 +100,10 @@ namespace nova_log.Utilities
                 if (modelList is null)
                     return chatMessages;
 
-                // Convert each ChatHistoryModel to its respective ChatMessage type.
                 foreach (var model in modelList)
                 {
                     ChatMessage message;
 
-                    // Validate the Content property before using it.
                     if (string.IsNullOrWhiteSpace(model.Content))
                     {
                         model.Content = string.Empty; 
@@ -155,7 +150,12 @@ namespace nova_log.Utilities
             try
             {
                 DataTable dt = new DataTable();
-                JArray jsonArray = JArray.Parse(json);
+                JObject jsonObject = JObject.Parse(json);
+
+                if (!jsonObject.ContainsKey("tasks") || !(jsonObject["tasks"] is JArray jsonArray))
+                {
+                    throw new Exception("Invalid JSON format: 'tasks' array not found.");
+                }
 
                 foreach (JObject obj in jsonArray)
                 {
@@ -163,14 +163,14 @@ namespace nova_log.Utilities
                     {
                         if (!dt.Columns.Contains(property.Name))
                         {
-                            dt.Columns.Add(property.Name, typeof(string));
+                            dt.Columns.Add(property.Name, typeof(string)); // Use string as default type
                         }
                     }
 
                     DataRow row = dt.NewRow();
                     foreach (var property in obj.Properties())
                     {
-                        row[property.Name] = property.Value != null ? property.Value.ToString() : DBNull.Value;
+                        row[property.Name] = property.Value?.ToString() ?? DBNull.Value.ToString();
                     }
                     dt.Rows.Add(row);
                 }
@@ -179,8 +179,8 @@ namespace nova_log.Utilities
             }
             catch (Exception ex)
             {
-                throw new Exception(ex.Message);
-            } 
+                throw new Exception($"Error converting JSON to DataTable: {ex.Message}");
+            }
         }
 
 

@@ -12,19 +12,13 @@ class Program
 {
     static async Task Main(string[] args)
     {
-
-        //AgentTask agentTask = new AgentTask();
-        //await agentTask.CreateGithubTask();
-
-
         List<ChatMessage> _chatHistory = new();
         PromptHandler promptHandler = new();
 
 
-        RequestModel response = await promptHandler.SendChatIntroPrompt();
+        _chatHistory = await promptHandler.SendChatIntroPrompt();
 
-        List<ChatMessage> chatHistory = ConvertionUtility.ConvertJsonToChatHistory(response.ChatHistory);
-        string res = chatHistory.Last().Content[0].Text;
+        string res = _chatHistory.Last().Content[0].Text;
         Console.WriteLine(res);
 
         string userPrompt;
@@ -32,17 +26,18 @@ class Program
         do
         {
             Console.WriteLine("\nEnter your message ('exit' to quit): ");
-            response.UserPrompt = Console.ReadLine();
+            userPrompt = Console.ReadLine();
 
-            if (response.UserPrompt?.ToLower() == "exit")
+            if (userPrompt?.ToLower() == "exit")
             {
                 break;
             }
+            _chatHistory.Add(new UserChatMessage(userPrompt));
 
-            response = await promptHandler.SendChatHistoryWithTools(response);
+            _chatHistory = await promptHandler.SendChatHistoryWithTools(_chatHistory);
             Console.WriteLine("\n");
-            chatHistory = ConvertionUtility.ConvertJsonToChatHistory(response.ChatHistory);
-            Console.WriteLine(chatHistory.Last().Content[0].Text);
+            res = _chatHistory.Last().Content[0].Text;
+            Console.WriteLine(res);
 
 
         } while (true);
@@ -50,4 +45,45 @@ class Program
         Console.WriteLine("\nConversation ended. Press any key to exit...");
         Console.ReadKey();
     }
+
+    //static async Task Main(string[] args)
+    //{
+
+    //    //AgentTask agentTask = new AgentTask();
+    //    //await agentTask.CreateGithubTask();
+
+
+    //    List<ChatMessage> _chatHistory = new();
+    //    PromptHandler promptHandler = new();
+
+
+    //    RequestModel response = await promptHandler.SendChatIntroPrompt();
+
+    //    List<ChatMessage> chatHistory = ConvertionUtility.ConvertJsonToChatHistory(response.ChatHistory);
+    //    string res = chatHistory.Last().Content[0].Text;
+    //    Console.WriteLine(res);
+
+    //    string userPrompt;
+
+    //    do
+    //    {
+    //        Console.WriteLine("\nEnter your message ('exit' to quit): ");
+    //        response.UserPrompt = Console.ReadLine();
+
+    //        if (response.UserPrompt?.ToLower() == "exit")
+    //        {
+    //            break;
+    //        }
+
+    //        response = await promptHandler.SendChatHistoryWithTools(response);
+    //        Console.WriteLine("\n");
+    //        chatHistory = ConvertionUtility.ConvertJsonToChatHistory(response.ChatHistory);
+    //        Console.WriteLine(chatHistory.Last().Content[0].Text);
+
+
+    //    } while (true);
+
+    //    Console.WriteLine("\nConversation ended. Press any key to exit...");
+    //    Console.ReadKey();
+    //}
 }
