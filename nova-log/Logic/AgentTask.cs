@@ -25,12 +25,6 @@ namespace nova_log.Logic
             return await sheetService.GetTaskListAsDataTableAsync(columnFrom, columnTo);
         }
 
-        public static string GetCurrentDate()
-        {
-            // Customize the date format if necessary.
-            return DateTime.Now.ToString("yyyy-MM-dd");
-        }
-
         public async Task<string> GetGithubProjectFieldId(string repoOwner, string projectNumber)
         {
             GitHubIssueCreator issueCreator = new();

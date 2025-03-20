@@ -12,38 +12,46 @@ class Program
 {
     static async Task Main(string[] args)
     {
-        List<ChatMessage> _chatHistory = new();
-        PromptHandler promptHandler = new();
-
-
-        _chatHistory = await promptHandler.SendChatIntroPrompt();
-
-        string res = _chatHistory.Last().Content[0].Text;
-        Console.WriteLine(res);
-
-        string userPrompt;
-
-        do
+        try
         {
-            Console.WriteLine("\nEnter your message ('exit' to quit): ");
-            userPrompt = Console.ReadLine();
+            List<ChatMessage> _chatHistory = new();
+            PromptHandler promptHandler = new();
 
-            if (userPrompt?.ToLower() == "exit")
-            {
-                break;
-            }
-            _chatHistory.Add(new UserChatMessage(userPrompt));
 
-            _chatHistory = await promptHandler.SendChatHistoryWithTools(_chatHistory);
-            Console.WriteLine("\n");
-            res = _chatHistory.Last().Content[0].Text;
+            _chatHistory = await promptHandler.SendChatIntroPrompt(_chatHistory);
+
+            string res = _chatHistory.Last().Content[0].Text;
             Console.WriteLine(res);
 
+            string userPrompt;
 
-        } while (true);
+            do
+            {
+                Console.WriteLine("\nEnter your message ('exit' to quit): ");
+                userPrompt = Console.ReadLine();
 
-        Console.WriteLine("\nConversation ended. Press any key to exit...");
-        Console.ReadKey();
+                if (userPrompt?.ToLower() == "exit")
+                {
+                    break;
+                }
+                _chatHistory.Add(new UserChatMessage(userPrompt));
+
+                _chatHistory = await promptHandler.SendChatHistoryWithTools(_chatHistory);
+                Console.WriteLine("\n");
+                res = _chatHistory.Last().Content[0].Text;
+                Console.WriteLine(res);
+
+
+            } while (true);
+
+            Console.WriteLine("\nConversation ended. Press any key to exit...");
+            Console.ReadKey();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"{ex.Message}");
+            Console.ReadKey();
+        }
     }
 
     //static async Task Main(string[] args)

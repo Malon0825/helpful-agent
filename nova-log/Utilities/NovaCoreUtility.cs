@@ -25,7 +25,6 @@ namespace nova_log.Utilities
             bool requiresAction;
             RequestModel history = new();
 
-            // Initialize utility classes
             ToolGoogleSheetUtility googleSheetUtility = new ToolGoogleSheetUtility();
             ToolGitHubUtility gitHubUtility = new ToolGitHubUtility();
 
@@ -54,39 +53,35 @@ namespace nova_log.Utilities
                                     switch (toolCall.FunctionName)
                                     {
                                         case nameof(AgentTool.GetGoogleSheetTask):
-                                            await googleSheetUtility.GetGoogleSheetTask(chatHistory, toolCall);
+                                            chatHistory = await googleSheetUtility.GetGoogleSheetTask(chatHistory, toolCall);
                                             break;
 
                                         case nameof(AgentTool.CreateGoogleSheetTask):
-                                            await googleSheetUtility.CreateGoogleSheetTask(chatHistory, toolCall, googleSheetStructuredResponse);
-                                            break;
-
-                                        case nameof(AgentTool.GetCurrentDate):
-                                            await googleSheetUtility.GetCurrentDate(chatHistory, toolCall);
+                                            chatHistory = await googleSheetUtility.CreateGoogleSheetTask(chatHistory, toolCall);
                                             break;
 
                                         case nameof(AgentTool.GetGithubProjectFieldId):
-                                            await gitHubUtility.GetGithubProjectFieldId(chatHistory, toolCall);
+                                            chatHistory = await gitHubUtility.GetGithubProjectFieldId(chatHistory, toolCall);
                                             break;
 
                                         case nameof(AgentTool.GetGithubRepoId):
-                                            await gitHubUtility.GetGithubRepoId(chatHistory, toolCall);
+                                            chatHistory = await gitHubUtility.GetGithubRepoId(chatHistory, toolCall);
                                             break;
 
                                         case nameof(AgentTool.GetGithubAssigneeId):
-                                            await gitHubUtility.GetGithubAssigneeId(chatHistory, toolCall);
+                                            chatHistory = await gitHubUtility.GetGithubAssigneeId(chatHistory, toolCall);
                                             break;
 
                                         case nameof(AgentTool.CreateGithubIssue):
-                                            await gitHubUtility.CreateGithubIssue(chatHistory, toolCall);
+                                            chatHistory = await gitHubUtility.CreateGithubIssue(chatHistory, toolCall);
                                             break;
 
                                         case nameof(AgentTool.AddIssueToProject):
-                                            await gitHubUtility.AddIssueToProject(chatHistory, toolCall);
+                                            chatHistory = await gitHubUtility.AddIssueToProject(chatHistory, toolCall);
                                             break;
 
                                         case nameof(AgentTool.UpdateAssignee):
-                                            await gitHubUtility.UpdateAssignee(chatHistory, toolCall);
+                                            chatHistory = await gitHubUtility.UpdateAssignee(chatHistory, toolCall);
                                             break;
 
                                         default:
@@ -121,47 +116,5 @@ namespace nova_log.Utilities
 
             return chatHistory;
         }
-
-
-        ChatCompletionOptions googleSheetStructuredResponse = new()
-        {
-            ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
-                jsonSchemaFormatName: "task_list",
-                jsonSchema: BinaryData.FromBytes("""
-            {
-                "type": "object",
-                "properties": {
-                    "tasks": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "task_list": { "type": "string" },
-                                "task_type": { "type": "string" },
-                                "estimate_hours": { "type": "string" },
-                                "actual_start_date": { "type": "string" },
-                                "actual_end_date": { "type": "string" },
-                                "priority_level": { "type": "string" },
-                                "status": { "type": "string" },
-                                "remarks": { "type": "string" }
-                            },
-                            "required": [
-                                "task_list", "task_type", "estimate_hours", "actual_start_date", "actual_end_date", 
-                                "priority_level", "status", "remarks"
-                            ],
-                            "additionalProperties": false
-                        }
-                    }
-                },
-                "required": ["tasks"],
-                "additionalProperties": false
-            }
-            """u8.ToArray()),
-                jsonSchemaIsStrict: true)
-        };
-
-
-      
-
     }
 }

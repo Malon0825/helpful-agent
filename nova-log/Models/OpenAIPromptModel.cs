@@ -16,14 +16,17 @@ namespace nova_log.Models
 
         public static string GenerateDynamicJsonTaskSystemInstruction()
         {
-            return "You are given the result from a GetGoogleSheetTask tool call, which returns rows of data from a Google Sheet. " +
+            return "You are given the result from a GetGoogleSheetTask tool call, which returns rows of data from a Google Sheet. Make sure to create a relevant and unique data based on the given User Prompt and the the result from a GetGoogleSheetTask tool call." +
                 "The sheet's columns may vary between calls and can include any of the following expected fields (but might also have additional or different columns). " +
                 "**Your task:**" +
                 "1. **Dynamic Mapping:**  " +
                 "- Analyze the fetched result and identify the available columns." +
-                "- For each row in the fetched result, output a JSON object with keys exactly matching the column names provided by the tool call." +
+                "- For each row in the fetched result, output a JSON object with keys exactly matching the column names provided in the GetGoogleSheetTask tool call." +
+                "- Analyze each data contained on the GetGoogleSheetTask tool call return value, make sure your generated response strictly follow the format for each column from the result." +
                 "2. **Output Format:**   " +
                 "- Return a JSON array where each element is a JSON object representing one row of data. " +
+                "Do not repeat the same task. Make sure that each task is different." +
+                "- Provide a generated data foreach column and avoid return characters." +
                 "- Do not include any extra text or explanation outside of the JSON array." +
                 "- Ensure the final output is valid JSON and does not have extra characters before or after the array." +
                 "Only return the JSON array as the output.";          

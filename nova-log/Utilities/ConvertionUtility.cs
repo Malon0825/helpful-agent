@@ -16,6 +16,58 @@ namespace nova_log.Utilities
     {
 
         /// <summary>
+        /// Converts a JSON string representing an array of objects into a DataTable.
+        /// The method handles dynamic JSON structure by adding new columns if they appear.
+        /// It also extracts the JSON content between the first '[' and last ']'.
+        /// </summary>
+        /// <param name="json">The JSON string to convert.</param>
+        /// <returns>A DataTable populated with the JSON data.</returns>
+        public static DataTable ConvertJsonToDynamicDataTable(string json)
+        {
+            try
+            {
+                // Extract valid JSON array by finding the first '[' and last ']'
+                int startIndex = json.IndexOf('[');
+                int endIndex = json.LastIndexOf(']');
+
+                if (startIndex == -1 || endIndex == -1 || startIndex > endIndex)
+                {
+                    throw new Exception("Invalid JSON format: Unable to locate valid array boundaries.");
+                }
+
+                json = json.Substring(startIndex, (endIndex - startIndex) + 1);
+
+                DataTable dt = new DataTable();
+                JArray jsonArray = JArray.Parse(json);
+
+                foreach (JObject obj in jsonArray)
+                {
+                    foreach (var property in obj.Properties())
+                    {
+                        if (!dt.Columns.Contains(property.Name))
+                        {
+                            dt.Columns.Add(property.Name, typeof(string)); // Use string as default type
+                        }
+                    }
+
+                    DataRow row = dt.NewRow();
+                    foreach (var property in obj.Properties())
+                    {
+                        row[property.Name] = property.Value?.ToString() ?? DBNull.Value.ToString();
+                    }
+                    dt.Rows.Add(row);
+                }
+
+                return dt;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error converting JSON to DataTable: {ex.Message}");
+            }
+        }
+
+
+        /// <summary>
         /// Converts a list of ChatMessage objects to a JSON string suitable for client consumption.
         /// </summary>
         /// <param name="chatHistory">The list of chat messages.</param>
@@ -139,49 +191,49 @@ namespace nova_log.Utilities
            
         }
 
-        /// <summary>
-        /// Converts a JSON string representing an array of objects into a DataTable.
-        /// The method handles dynamic JSON structure by adding new columns if they appear.
-        /// </summary>
-        /// <param name="json">The JSON string to convert.</param>
-        /// <returns>A DataTable populated with the JSON data.</returns>
-        public static DataTable ConvertJsonToDynamicDataTable(string json)
-        {
-            try
-            {
-                DataTable dt = new DataTable();
-                JObject jsonObject = JObject.Parse(json);
+        ///// <summary>
+        ///// Converts a JSON string representing an array of objects into a DataTable.
+        ///// The method handles dynamic JSON structure by adding new columns if they appear.
+        ///// </summary>
+        ///// <param name="json">The JSON string to convert.</param>
+        ///// <returns>A DataTable populated with the JSON data.</returns>
+        //public static DataTable ConvertJsonToDynamicDataTable(string json)
+        //{
+        //    try
+        //    {
+        //        DataTable dt = new DataTable();
+        //        JObject jsonObject = JObject.Parse(json);
 
-                if (!jsonObject.ContainsKey("tasks") || !(jsonObject["tasks"] is JArray jsonArray))
-                {
-                    throw new Exception("Invalid JSON format: 'tasks' array not found.");
-                }
+        //        if (!jsonObject.ContainsKey("tasks") || !(jsonObject["tasks"] is JArray jsonArray))
+        //        {
+        //            throw new Exception("Invalid JSON format: 'tasks' array not found.");
+        //        }
 
-                foreach (JObject obj in jsonArray)
-                {
-                    foreach (var property in obj.Properties())
-                    {
-                        if (!dt.Columns.Contains(property.Name))
-                        {
-                            dt.Columns.Add(property.Name, typeof(string)); // Use string as default type
-                        }
-                    }
+        //        foreach (JObject obj in jsonArray)
+        //        {
+        //            foreach (var property in obj.Properties())
+        //            {
+        //                if (!dt.Columns.Contains(property.Name))
+        //                {
+        //                    dt.Columns.Add(property.Name, typeof(string)); // Use string as default type
+        //                }
+        //            }
 
-                    DataRow row = dt.NewRow();
-                    foreach (var property in obj.Properties())
-                    {
-                        row[property.Name] = property.Value?.ToString() ?? DBNull.Value.ToString();
-                    }
-                    dt.Rows.Add(row);
-                }
+        //            DataRow row = dt.NewRow();
+        //            foreach (var property in obj.Properties())
+        //            {
+        //                row[property.Name] = property.Value?.ToString() ?? DBNull.Value.ToString();
+        //            }
+        //            dt.Rows.Add(row);
+        //        }
 
-                return dt;
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Error converting JSON to DataTable: {ex.Message}");
-            }
-        }
+        //        return dt;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        throw new Exception($"Error converting JSON to DataTable: {ex.Message}");
+        //    }
+        //}
 
 
         /// <summary>

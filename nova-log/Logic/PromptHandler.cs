@@ -19,13 +19,17 @@ namespace nova_log.Logic
     public class PromptHandler
     {
         private readonly ChatCompletionOptions _options;
-
+        private OpenAIService _openAIService;
+        private NovaCoreUtility _promptUtility;
         public PromptHandler()
         {
+            _openAIService = new OpenAIService();
+            _promptUtility = new NovaCoreUtility();
+
+
             _options = new ChatCompletionOptions();
             _options.Tools.Add(AgentTool.GetGoogleSheetTask);
             _options.Tools.Add(AgentTool.CreateGoogleSheetTask);
-            _options.Tools.Add(AgentTool.GetCurrentDate);
             //_options.Tools.Add(AgentTool.GetGithubProjectFieldId);
             //_options.Tools.Add(AgentTool.GetGithubRepoId);
             //_options.Tools.Add(AgentTool.CreateGithubIssue);
@@ -38,36 +42,32 @@ namespace nova_log.Logic
         {
             try
             {
-                OpenAIService openAIService = new();
-                NovaCoreUtility promptUtility = new();;
-
-                chatHistory = await promptUtility.EvaluateAgentResponseWithLoop(chatHistory, _options);
+                chatHistory = await _promptUtility.EvaluateAgentResponseWithLoop(chatHistory, _options);
             }
             catch (Exception ex)
             {
-                throw new Exception(ex.Message);
+                chatHistory.Add(new SystemChatMessage(ex.Message));
+                string agentResponse = await _openAIService.SendUtilityChatPrompt(ex.Message);
+                chatHistory.Add(new AssistantChatMessage(agentResponse));
             }
             return chatHistory;
         }
 
-        public async Task<List<ChatMessage>> SendChatIntroPrompt()
+        public async Task<List<ChatMessage>> SendChatIntroPrompt(List<ChatMessage> chatHistory)
         {
-            List<ChatMessage> chatHistory = new();
-            OpenAIService openAIService = new();
             try
             {
                 chatHistory.Add(new SystemChatMessage(OpenAIPromptModel.IntroductionSystemInstruction()));
-
-                string agentResponse = await openAIService.SendIntroPrompt(chatHistory);
-                chatHistory.Add(new AssistantChatMessage(agentResponse));
-
-                return chatHistory;
+                string agentResponse = await _openAIService.SendIntroPrompt(chatHistory);
+                chatHistory.Add(new AssistantChatMessage(agentResponse));             
             }
             catch (Exception ex)
             {
-                throw new Exception(ex.Message);
+                chatHistory.Add(new SystemChatMessage(ex.Message));
+                string agentResponse = await _openAIService.SendUtilityChatPrompt(ex.Message);
+                chatHistory.Add(new AssistantChatMessage(agentResponse));
             }
-
+            return chatHistory;
         }
 
         //public async Task<RequestModel> SendChatHistoryWithTools(RequestModel clientRequest)

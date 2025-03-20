@@ -45,11 +45,11 @@ namespace nova_log.DataAccess
             }
         }
 
-        public async Task<string> SendChatPrompt(List<ChatMessage> chatHistory)
+        public async Task<string> SendUtilityChatPrompt(string prompt)
         {
             try
             {
-                ChatCompletion completion = await _chatClient.CompleteChatAsync(chatHistory);
+                ChatCompletion completion = await _chatClient.CompleteChatAsync(prompt);
                 return completion.Content[0].Text;
             }
             catch (Exception ex)
@@ -58,11 +58,11 @@ namespace nova_log.DataAccess
             }
         }
 
-        public async Task<string> SendChatPromptReturnString(List<ChatMessage> chatHistory, ChatCompletionOptions options)
+        public async Task<string> SendChatPrompt(List<ChatMessage> chatHistory)
         {
             try
             {
-                ChatCompletion completion = await _chatClient.CompleteChatAsync(chatHistory, options);
+                ChatCompletion completion = await _chatClient.CompleteChatAsync(chatHistory);
                 return completion.Content[0].Text;
             }
             catch (Exception ex)

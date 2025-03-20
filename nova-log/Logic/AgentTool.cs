@@ -79,18 +79,6 @@ namespace nova_log.Logic
             """u8.ToArray())
         );
 
-        public static readonly ChatTool GetCurrentDate = ChatTool.CreateFunctionTool(
-            functionName: nameof(AgentTask.GetCurrentDate),
-            functionDescription: "Returns the current date in yyyy-MM-dd format.",
-            functionParameters: BinaryData.FromBytes("""
-                {
-                    "type": "object",
-                    "properties": {},
-                    "required": []
-                }
-                """u8.ToArray())
-        );
-
         public static readonly ChatTool GetGithubProjectFieldId = ChatTool.CreateFunctionTool(
             functionName: nameof(AgentTask.GetGithubProjectFieldId),
             functionDescription: "Fetches all field IDs for a given GitHub project and returns them as JSON.",

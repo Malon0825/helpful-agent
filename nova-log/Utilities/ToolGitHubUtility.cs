@@ -10,11 +10,20 @@ using System.Threading.Tasks;
 
 namespace nova_log.Utilities
 {
+    /// <summary>
+    /// Utility class for interacting with GitHub through various tools.
+    /// </summary>
     public class ToolGitHubUtility
     {
-        public async Task GetGithubProjectFieldId(List<ChatMessage> chatHistory, ChatToolCall toolCall)
+        /// <summary>
+        /// Gets the field ID of a GitHub project.
+        /// </summary>
+        /// <param name="chatHistory">The list of chat messages to log activity.</param>
+        /// <param name="toolCall">The tool call containing the necessary parameters.</param>
+        /// <returns>The updated chat history.</returns>
+        public async Task<List<ChatMessage>> GetGithubProjectFieldId(List<ChatMessage> chatHistory, ChatToolCall toolCall)
         {
-            chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool call to get all github projects field id."));
+            chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool call to get all GitHub projects field ID."));
             using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
 
             try
@@ -28,20 +37,26 @@ namespace nova_log.Utilities
                 AgentTask projectHelper = new();
                 string projectFieldsJson = await projectHelper.GetGithubProjectFieldId(repoOwner, projectNumber);
                 chatHistory.Add(new SystemChatMessage(projectFieldsJson));
-                return;
             }
             catch (Exception ex)
             {
                 chatHistory.Add(new SystemChatMessage($"Error in CheckGithubProjectFields implementation: {ex.Message}"));
                 string agentErrorResponse = await new OpenAIService().SendChatPrompt(chatHistory);
                 chatHistory.Add(new AssistantChatMessage(agentErrorResponse));
-                return;
             }
+
+            return chatHistory;
         }
 
-        public async Task GetGithubRepoId(List<ChatMessage> chatHistory, ChatToolCall toolCall)
+        /// <summary>
+        /// Gets the repository IDs for a given GitHub user or organization.
+        /// </summary>
+        /// <param name="chatHistory">The list of chat messages to log activity.</param>
+        /// <param name="toolCall">The tool call containing the necessary parameters.</param>
+        /// <returns>The updated chat history.</returns>
+        public async Task<List<ChatMessage>> GetGithubRepoId(List<ChatMessage> chatHistory, ChatToolCall toolCall)
         {
-            chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool call to get all github repo id."));
+            chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool call to get all GitHub repo IDs."));
             using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
 
             try
@@ -52,24 +67,30 @@ namespace nova_log.Utilities
                 AgentTask agentTask = new();
                 string repoJson = await agentTask.GetGithubRepoId(repoOwner);
                 chatHistory.Add(new SystemChatMessage(repoJson));
-                chatHistory.Add(new SystemChatMessage("Based on the response in json. Create a list of repository and give that back to the user."));
+                chatHistory.Add(new SystemChatMessage("Based on the response in JSON. Create a list of repositories and return it to the user."));
 
                 string response = await new OpenAIService().SendChatPrompt(chatHistory);
                 chatHistory.Add(new AssistantChatMessage(response));
-                return;
             }
             catch (Exception ex)
             {
                 chatHistory.Add(new SystemChatMessage($"Error in GetGithubRepoId implementation: {ex.Message}"));
                 string agentErrorResponse = await new OpenAIService().SendChatPrompt(chatHistory);
                 chatHistory.Add(new AssistantChatMessage(agentErrorResponse));
-                return;
             }
+
+            return chatHistory;
         }
 
-        public async Task GetGithubAssigneeId(List<ChatMessage> chatHistory, ChatToolCall toolCall)
+        /// <summary>
+        /// Gets the GitHub user ID for a given assignee.
+        /// </summary>
+        /// <param name="chatHistory">The list of chat messages to log activity.</param>
+        /// <param name="toolCall">The tool call containing the necessary parameters.</param>
+        /// <returns>The updated chat history.</returns>
+        public async Task<List<ChatMessage>> GetGithubAssigneeId(List<ChatMessage> chatHistory, ChatToolCall toolCall)
         {
-            chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool call to get github assignee id."));
+            chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool call to get GitHub assignee ID."));
             using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
 
             try
@@ -80,20 +101,26 @@ namespace nova_log.Utilities
                 AgentTask agentTask = new();
                 string userId = await agentTask.GetGithubAssigneeId(userName);
                 chatHistory.Add(new AssistantChatMessage(userId));
-                return;
             }
             catch (Exception ex)
             {
                 chatHistory.Add(new SystemChatMessage($"Error in GetGithubAssigneeId implementation: {ex.Message}"));
                 string agentErrorResponse = await new OpenAIService().SendChatPrompt(chatHistory);
                 chatHistory.Add(new AssistantChatMessage(agentErrorResponse));
-                return;
             }
+
+            return chatHistory;
         }
 
-        public async Task CreateGithubIssue(List<ChatMessage> chatHistory, ChatToolCall toolCall)
+        /// <summary>
+        /// Creates a new issue in a GitHub repository.
+        /// </summary>
+        /// <param name="chatHistory">The list of chat messages to log activity.</param>
+        /// <param name="toolCall">The tool call containing the necessary parameters.</param>
+        /// <returns>The updated chat history.</returns>
+        public async Task<List<ChatMessage>> CreateGithubIssue(List<ChatMessage> chatHistory, ChatToolCall toolCall)
         {
-            chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool call to create github issue."));
+            chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool call to create GitHub issue."));
             using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
 
             try
@@ -107,20 +134,26 @@ namespace nova_log.Utilities
                 AgentTask agentTask = new();
                 string issueResponse = await agentTask.CreateGithubIssue(repositoryId, title, body);
                 chatHistory.Add(new AssistantChatMessage(issueResponse));
-                return;
             }
             catch (Exception ex)
             {
                 chatHistory.Add(new SystemChatMessage($"Error in CreateGithubIssue implementation: {ex.Message}"));
                 string agentErrorResponse = await new OpenAIService().SendChatPrompt(chatHistory);
                 chatHistory.Add(new AssistantChatMessage(agentErrorResponse));
-                return;
             }
+
+            return chatHistory;
         }
 
-        public async Task AddIssueToProject(List<ChatMessage> chatHistory, ChatToolCall toolCall)
+        /// <summary>
+        /// Adds an issue to a GitHub project.
+        /// </summary>
+        /// <param name="chatHistory">The list of chat messages to log activity.</param>
+        /// <param name="toolCall">The tool call containing the necessary parameters.</param>
+        /// <returns>The updated chat history.</returns>
+        public async Task<List<ChatMessage>> AddIssueToProject(List<ChatMessage> chatHistory, ChatToolCall toolCall)
         {
-            chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool call to add issues to github projects"));
+            chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool call to add issues to GitHub projects."));
             using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
 
             try
@@ -133,20 +166,26 @@ namespace nova_log.Utilities
                 AgentTask agentTask = new();
                 string result = await agentTask.AddIssueToProject(projectId, contentId);
                 chatHistory.Add(new AssistantChatMessage(result));
-                return;
             }
             catch (Exception ex)
             {
                 chatHistory.Add(new SystemChatMessage($"Error in AddIssueToProject implementation: {ex.Message}"));
                 string agentErrorResponse = await new OpenAIService().SendChatPrompt(chatHistory);
                 chatHistory.Add(new AssistantChatMessage(agentErrorResponse));
-                return;
             }
+
+            return chatHistory;
         }
 
-        public async Task UpdateAssignee(List<ChatMessage> chatHistory, ChatToolCall toolCall)
+        /// <summary>
+        /// Updates the assignee of a GitHub issue or project item.
+        /// </summary>
+        /// <param name="chatHistory">The list of chat messages to log activity.</param>
+        /// <param name="toolCall">The tool call containing the necessary parameters.</param>
+        /// <returns>The updated chat history.</returns>
+        public async Task<List<ChatMessage>> UpdateAssignee(List<ChatMessage> chatHistory, ChatToolCall toolCall)
         {
-            chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool call to update assignee on github projects."));
+            chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool call to update assignee on GitHub projects."));
             using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
 
             try
@@ -159,15 +198,16 @@ namespace nova_log.Utilities
                 AgentTask agentTask = new();
                 string result = await agentTask.UpdateAssignee(contentId, assigneeId);
                 chatHistory.Add(new AssistantChatMessage(result));
-                return;
             }
             catch (Exception ex)
             {
                 chatHistory.Add(new SystemChatMessage($"Error in UpdateAssignee implementation: {ex.Message}"));
                 string agentErrorResponse = await new OpenAIService().SendChatPrompt(chatHistory);
                 chatHistory.Add(new AssistantChatMessage(agentErrorResponse));
-                return;
             }
+
+            return chatHistory;
         }
     }
+
 }
