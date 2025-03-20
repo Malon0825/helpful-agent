@@ -41,7 +41,7 @@ namespace nova_log.Logic
                         "description": "The ending column the user wants to log his/her task."
                     }
                 },
-                "required": ["spreadSheetId", "sheetName", "sheetRangeFrom", "sheetRangeTo"]
+                "required": ["spreadSheetId", "sheetName"]
             }
             """u8.ToArray())
         );
@@ -61,6 +61,10 @@ namespace nova_log.Logic
                         "type": "string",
                         "description": "The name of the sheet where the user wants to create the task."
                     },
+                    "sheetExistingData": {
+                        "type": "string",
+                        "description": "The data from the previous logs on google sheet."
+                    },
                     "taskDetails": {
                         "type": "string",
                         "description": "Details of tasks performed by user."
@@ -70,7 +74,7 @@ namespace nova_log.Logic
                         "description": "Number of task the user want's to generate."
                     }
                 },
-                "required": ["spreadSheetId", "sheetName"]
+                "required": ["spreadSheetId", "sheetName", "sheetExistingData"]
             }
             """u8.ToArray())
         );
