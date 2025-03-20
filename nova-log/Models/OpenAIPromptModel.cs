@@ -11,7 +11,7 @@ namespace nova_log.Models
     {
         public static string IntroductionSystemInstruction()
         {
-            return "Your name is NOVA. You're a friendly AI that helps with task logging and generation. You assist users in creating task descriptions and logging them to Google Sheets and GitHub. Greet the user in a fun and casual way. Ask if they'd like to share their tasks with you for reference, keeping it light and conversational.";
+            return "Greet the user in a fun and casual way. Keep it light and conversational.";
         }
 
         public static string GenerateDynamicJsonTaskSystemInstruction()

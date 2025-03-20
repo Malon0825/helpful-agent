@@ -63,6 +63,43 @@ namespace nova_log.Utilities
             }
         }
 
+        //public async Task<List<ChatMessage>> GenerateGoogleSheetTask(List<ChatMessage> chatHistory, ChatToolCall toolCall)
+        //{
+        //    chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool generate task from user prompt or google data."));
+        //    using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
+
+        //    try
+        //    {
+        //        chatHistory.Add(new SystemChatMessage(OpenAIPromptModel.GenerateDynamicJsonTaskSystemInstruction()));
+
+        //        string his = ConvertionUtility.ConvertChatHistoryToJson(chatHistory);
+
+        //        string structuredResponse = await new OpenAIService().SendChatPrompt(chatHistory);
+
+        //        chatHistory.Add(new AssistantChatMessage(structuredResponse));
+
+        //        DataTable taskList = ConvertionUtility.ConvertJsonToDynamicDataTable(structuredResponse);
+
+        //        AgentTask agent = new();
+        //        bool isTaskInserted = await agent.CreateGoogleSheetTask(taskList, spreadSheetId.GetString(), sheetName.GetString());
+
+        //        if (isTaskInserted)
+        //        {
+        //            chatHistory.Add(new SystemChatMessage("Task has been inserted to Google sheet."));
+        //        }
+        //        else
+        //        {
+        //            chatHistory.Add(new SystemChatMessage("Failed to insert task."));
+        //        }
+
+        //        return chatHistory;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        throw new Exception(ex.Message);
+        //    }
+        //}
+
         public async Task<List<ChatMessage>> CreateGoogleSheetTask(List<ChatMessage> chatHistory, ChatToolCall toolCall)
         {
             chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool create task in Google sheet."));
@@ -87,7 +124,6 @@ namespace nova_log.Utilities
 
                 string his = ConvertionUtility.ConvertChatHistoryToJson(chatHistory);
                 string structuredResponse = await new OpenAIService().SendChatPrompt(chatHistory);
-                chatHistory.Add(new ToolChatMessage(toolCall.Id, "Tool to create a structured json list of task."));
                 chatHistory.Add(new AssistantChatMessage(structuredResponse));
 
                 DataTable taskList = ConvertionUtility.ConvertJsonToDynamicDataTable(structuredResponse);
@@ -111,6 +147,7 @@ namespace nova_log.Utilities
                 throw new Exception(ex.Message);
             }
         }
+
 
     }
 
