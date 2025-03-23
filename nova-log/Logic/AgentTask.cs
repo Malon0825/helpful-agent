@@ -1,5 +1,7 @@
 ﻿using Google.Apis.Sheets.v4.Data;
+using Newtonsoft.Json.Linq;
 using nova_log.DataAccess;
+using nova_log.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -71,11 +73,9 @@ namespace nova_log.Logic
                 string userName = "ItsMark-SE";
                 string projectNumber = "171";
                 string repoName = "queue-counter-db";
-                string status = "In Progress";
-                string[] labels = { "bug", "high-priority" };
                 string startDate = "2024-03-10";
                 string endDate = "2024-03-15";
-                string title = "Test issue 6";
+                string title = "Test issue ni Clarence";
                 string body = "This is a test issue created via GraphQL API";
 
 
@@ -90,10 +90,10 @@ namespace nova_log.Logic
                 Console.WriteLine($"Issue created response: {createIssueResponse}");
 
                 // Extract issue ID for later use in adding to project
-                string contentId = issueCreator.ExtractIssueId(createIssueResponse);
+                string itemId = issueCreator.ExtractIssueId(createIssueResponse);
                 int issueNumber = issueCreator.ExtractIssueNumber(createIssueResponse);
                 string issueUrl = issueCreator.ExtractIssueUrl(createIssueResponse);
-                Console.WriteLine($"Issue created with ID: {contentId}");
+                Console.WriteLine($"Issue created with ID: {itemId}");
                 Console.WriteLine($"Issue number: {issueNumber}");
                 Console.WriteLine($"Issue URL: {issueUrl}");
 
@@ -111,18 +111,32 @@ namespace nova_log.Logic
 
                 string assigneeId = await issueCreator.GetUserIdAsync(userName);
 
-                string addToProjectResponse = await issueCreator.AddIssueToProjectAsync(projectId, contentId);
-                Console.WriteLine($"Add to project response: {addToProjectResponse}");
+                //issue id here
+                string issueId = await issueCreator.AddIssueToProjectAsync(projectId, itemId);
+                Console.WriteLine($"Issue Id: {issueId}");
 
 
-                string updateAssigneesAsyncResponse = await issueCreator.UpdateAssigneeAsync(contentId, assigneeId);
-                Console.WriteLine($"Add to project response: {updateAssigneesAsyncResponse}");
+                string updateAssigneesAsyncResponse = await issueCreator.UpdateAssigneeAsync(itemId, assigneeId);
+                Console.WriteLine($"updateAssigneesAsyncResponse: {updateAssigneesAsyncResponse}");
 
                 string fieldIdByResponse = await issueCreator.GetAllFieldsAsJson(projectId);
-                Console.WriteLine($"Add to project response: {fieldIdByResponse}");
+                Console.WriteLine($"fieldIdByResponse: {fieldIdByResponse}");
 
-                //string updateStatusAsyncResponse = await issueCreator.UpdateStatusAsync(projectId, contentId, fieldId, statusOptionid);
-                //Console.WriteLine($"Add to project response: {updateAssigneesAsyncResponse}");
+                // Parse the JSON
+                JObject jsonObject = JObject.Parse(fieldIdByResponse);
+                // Extract the "Status" value
+                string statusFieldId = jsonObject["Status"].ToString();
+
+                string fieldOptionsIdList = await issueCreator.GetAllStatusOptionIdsAsync(projectId, statusFieldId);
+                string statusOptionId = GithubExtractUtility.ExtractFieldOptionsId(fieldOptionsIdList, statusFieldId);
+                Console.WriteLine($"statusOptionId: {statusOptionId}");
+
+
+                JObject statusOptionIdobject = JObject.Parse(statusOptionId);
+                statusOptionId = statusOptionIdobject["Done"].ToString();
+
+                string updateStatusAsyncResponse = await issueCreator.UpdateProjectItemStatusAsync(projectId, issueId, statusFieldId, statusOptionId);
+                Console.WriteLine($"Add to project response: {updateAssigneesAsyncResponse}");
 
 
                 Console.WriteLine("Operation completed successfully!");

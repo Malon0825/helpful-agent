@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Google.Apis.Sheets.v4.Data;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -137,7 +138,17 @@ namespace nova_log.DataAccess
             var response = await _httpClient.PostAsync("https://api.github.com/graphql", content);
             var responseBody = await response.Content.ReadAsStringAsync();
 
-            return responseBody;
+            using JsonDocument doc = JsonDocument.Parse(responseBody);
+
+            // Navigate through the JSON structure to get the ID
+            string itemId = doc.RootElement
+                .GetProperty("data")
+                .GetProperty("addProjectV2ItemById")
+                .GetProperty("item")
+                .GetProperty("id")
+                .GetString();
+
+            return itemId;
         }
 
         public async Task<string> UpdateAssigneeAsync(string contentId, string assigneeId)
@@ -188,45 +199,62 @@ namespace nova_log.DataAccess
             return responseBody;
         }
 
-        public async Task<string> UpdateStatusAsync(string projectId, string itemId, string fieldId, string statusOptionId)
+        public async Task<string> UpdateProjectItemStatusAsync(string projectId, string itemId, string fieldId, string singleSelectOptionId)
         {
-            // Define the GraphQL mutation.
-            // Note: We declare $assigneeId as String! now to match the expected type.
-            var mutation = @"
-                            mutation {
-                              updateProjectV2ItemFieldValue(
-                                input: {
-                                  projectId: """ + projectId + @"""
-                                  itemId: """ + itemId + @"""
-                                  fieldId: """ + fieldId + @"""
-                                  value: { singleSelectOptionId: """ + statusOptionId + @""" }
-                                }
-                              ) {
-                                projectV2Item {
-                                  id
-                                }
-                              }
-                            }";
-
-            // Construct the request payload.
-            var request = new
+            try
             {
-                query = mutation
-            };
+                // Define the GraphQL mutation with proper variable declarations
+                var mutation = @"
+            mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $singleSelectOptionId: String!) {
+                updateProjectV2ItemFieldValue(input: {
+                    projectId: $projectId,
+                    itemId: $itemId,
+                    fieldId: $fieldId,
+                    value: {
+                        singleSelectOptionId: $singleSelectOptionId
+                    }
+                }) {
+                    projectV2Item {
+                        id
+                    }
+                }
+            }";
 
-            // Serialize the request content.
-            var content = new StringContent(
-                JsonSerializer.Serialize(request),
-                Encoding.UTF8,
-                "application/json"
-            );
+                // Set up the variables
+                var variables = new
+                {
+                    projectId = projectId,
+                    itemId = itemId,
+                    fieldId = fieldId,
+                    singleSelectOptionId = singleSelectOptionId
+                };
 
-            // Post the request.
-            var response = await _httpClient.PostAsync("https://api.github.com/graphql", content);
-            var responseBody = await response.Content.ReadAsStringAsync();
+                // Construct the request payload
+                var request = new
+                {
+                    query = mutation,
+                    variables
+                };
 
-            return responseBody;
+                // Serialize the request content
+                var content = new StringContent(
+                    JsonSerializer.Serialize(request),
+                    Encoding.UTF8,
+                    "application/json"
+                );
+
+                // Post the request
+                var response = await _httpClient.PostAsync("https://api.github.com/graphql", content);
+                var responseBody = await response.Content.ReadAsStringAsync();
+                return responseBody;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Exception in UpdateProjectItemStatusAsync: {ex.Message}");
+                return "";
+            }
         }
+
 
         public async Task<string> UpdateDatesAsync(string itemId, string fieldId, string dateValue, string projectId)
         {
@@ -463,6 +491,59 @@ namespace nova_log.DataAccess
 
             return JsonSerializer.Serialize(repoList, new JsonSerializerOptions { WriteIndented = true });
         }
+
+        public async Task<string> GetAllStatusOptionIdsAsync(string projectId, string fieldId)
+        {
+            try
+            {
+                var query = @"
+        query($projectId: ID!) {
+          node(id: $projectId) {
+            ... on ProjectV2 {
+              fields(first: 100) {
+                nodes {
+                  ... on ProjectV2SingleSelectField {
+                    id
+                    name
+                    options {
+                      id
+                      name
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }";
+
+                var variables = new { projectId };
+                var request = new
+                {
+                    query,
+                    variables
+                };
+
+                var content = new StringContent(
+                    JsonSerializer.Serialize(request),
+                    Encoding.UTF8,
+                    "application/json");
+
+                var response = await _httpClient.PostAsync("https://api.github.com/graphql", content);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    throw new HttpRequestException($"Request failed with status code: {response.StatusCode}");
+                }
+
+                return await response.Content.ReadAsStringAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error parsing JSON: {ex.Message}");
+                return "{}";
+            }
+        }
+
 
 
         // Extract issue ID from CreateIssueAsync response
